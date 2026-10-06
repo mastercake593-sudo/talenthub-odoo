@@ -21,6 +21,8 @@
             <list create="false" edit="false">
                 <field name="name" string="Position"/>
                 <field name="external_position_id" string="External Position ID"/>
+                <field name="cv_count" string="CV Count"/>
+                <field name="generated_at" string="Generated At"/>
                 <field name="source_base_url" string="Source URL" widget="url"/>
                 <field name="imported_at" string="Imported At"/>
             </list>
@@ -44,8 +46,12 @@
                         </h1>
                     </div>
                     <group>
-                        <group string="Source Information">
+                        <group string="Position &amp; Statistics Metadata">
                             <field name="external_position_id" readonly="1"/>
+                            <field name="cv_count" readonly="1"/>
+                            <field name="generated_at" readonly="1"/>
+                        </group>
+                        <group string="Source Information">
                             <field name="source_base_url" readonly="1" widget="url"/>
                             <field name="imported_at" readonly="1"/>
                         </group>
@@ -56,13 +62,13 @@
                                 <list create="false" delete="false" edit="false">
                                     <field name="name" string="Attribute"/>
                                     <field name="data_type" string="Type"/>
-                                    <field name="sample_count" string="Count"/>
+                                    <field name="sample_count" string="Non-Empty Count"/>
                                     <field name="average_value" string="Average"/>
                                     <field name="min_value" string="Min"/>
                                     <field name="max_value" string="Max"/>
                                     <field name="true_count" string="True Count"/>
                                     <field name="false_count" string="False Count"/>
-                                    <field name="popular_values_display" string="Popular Values"/>
+                                    <field name="popular_values_display" string="Summary / Distribution"/>
                                 </list>
                                 <form string="Attribute Aggregate Detail">
                                     <sheet>
@@ -71,6 +77,7 @@
                                                 <field name="name" readonly="1"/>
                                                 <field name="external_attribute_id" readonly="1"/>
                                                 <field name="data_type" readonly="1"/>
+                                                <field name="aggregation_kind" readonly="1"/>
                                                 <field name="sample_count" readonly="1"/>
                                             </group>
                                             <group string="Numeric Metrics">
@@ -81,10 +88,16 @@
                                             <group string="Boolean Counts">
                                                 <field name="true_count" readonly="1"/>
                                                 <field name="false_count" readonly="1"/>
+                                                <field name="true_percentage" readonly="1"/>
+                                            </group>
+                                            <group string="Date / Period / Other">
+                                                <field name="date_min" readonly="1"/>
+                                                <field name="date_max" readonly="1"/>
+                                                <field name="summary_info" readonly="1"/>
                                             </group>
                                         </group>
                                         <notebook>
-                                            <page string="Popular Values (OneOfMany)" name="popular_values">
+                                            <page string="Top Values (Distribution)" name="popular_values">
                                                 <field name="popular_value_ids" readonly="1">
                                                     <list create="false" delete="false" edit="false">
                                                         <field name="value" string="Value"/>

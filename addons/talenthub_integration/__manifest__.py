@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'TalentHub Integration',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'summary': 'Read-only viewer for Position aggregate results from TalentHub',
     'description': """
 TalentHub Integration for Odoo 19

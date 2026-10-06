@@ -22,6 +22,15 @@ class TalentHubPosition(models.Model):
         string='Source Base URL',
         help='Base URL of the TalentHub instance from which this position was imported.',
     )
+    cv_count = fields.Integer(
+        string='CV Count',
+        default=0,
+        help='Total number of CVs evaluated for this position.',
+    )
+    generated_at = fields.Datetime(
+        string='Generated At',
+        help='Timestamp when statistics were computed in TalentHub.',
+    )
     imported_at = fields.Datetime(
         string='Imported At',
         default=fields.Datetime.now,
