@@ -29,13 +29,21 @@ class TalentHubImportPositionWizard(models.TransientModel):
         """Fetches position aggregates from TalentHub API and upserts into local Odoo database."""
         self.ensure_one()
 
-        base_url = (self.base_url or '').strip().rstrip('/')
+        raw_url = (self.base_url or '').strip()
         api_token = (self.api_token or '').strip()
 
-        if not base_url:
+        if not raw_url:
             raise UserError(_("Please provide a valid TalentHub Base URL."))
         if not api_token:
             raise UserError(_("Please provide a Position API Token."))
+
+        # Clean up base URL if the user pasted a full endpoint or has trailing slashes
+        clean_url = raw_url.rstrip('/')
+        if '/api/integrations/odoo' in clean_url:
+            clean_url = clean_url.split('/api/integrations/odoo')[0]
+        elif clean_url.endswith('/api'):
+            clean_url = clean_url[:-4]
+        base_url = clean_url.rstrip('/')
 
         masked_token = f"{api_token[:4]}***" if len(api_token) > 4 else "***"
         _logger.info("Importing TalentHub position from %s with token prefix %s", base_url, masked_token)
@@ -84,8 +92,21 @@ class TalentHubImportPositionWizard(models.TransientModel):
         try:
             data = response.json()
         except Exception:
-            _logger.error("Invalid JSON response received from %s", target_endpoint)
-            raise UserError(_("Invalid JSON response received from TalentHub. Please ensure the endpoint returns valid JSON."))
+            _logger.error("Invalid JSON response received from %s (HTTP %s): %s", response.url, response.status_code, response.text[:500])
+            snippet = response.text[:300].strip() or '[Empty response body]'
+            raise UserError(_(
+                "Invalid JSON response received from TalentHub.\n\n"
+                "Endpoint: %s\n"
+                "HTTP Status: %s (%s)\n"
+                "Content-Type: %s\n\n"
+                "Response: %s"
+            ) % (
+                response.url,
+                response.status_code,
+                response.reason,
+                response.headers.get('content-type', 'unknown'),
+                snippet
+            ))
 
         if not isinstance(data, dict):
             raise UserError(_("Invalid response structure: expected a JSON object."))
