@@ -6,13 +6,9 @@
         <field name="model">talenthub.position</field>
         <field name="arch" type="xml">
             <search>
-                <field name="name"/>
-                <field name="external_position_id"/>
-                <field name="source_base_url"/>
-                <group expand="0" string="Group By">
-                    <filter string="Source URL" name="group_by_source" context="{'group_by': 'source_base_url'}"/>
-                    <filter string="Import Date" name="group_by_date" context="{'group_by': 'imported_at'}"/>
-                </group>
+                <field name="name" string="Position"/>
+                <field name="external_position_id" string="External ID"/>
+                <field name="source_base_url" string="Source URL"/>
             </search>
         </field>
     </record>
