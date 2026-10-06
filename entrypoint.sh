@@ -54,7 +54,7 @@ host = '$HOST'
 port = int('$PORT_NUM')
 user = '$USER'
 password = '$PASSWORD'
-dbname = '$DATABASE' or 'postgres'
+default_db = '$DATABASE' or 'postgres'
 
 conn = None
 for attempt in range(15):
@@ -62,11 +62,11 @@ for attempt in range(15):
         try:
             import psycopg2 as pg
             from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-            conn = pg.connect(host=host, port=port, user=user, password=password, dbname=dbname, connect_timeout=5)
+            conn = pg.connect(host=host, port=port, user=user, password=password, dbname=default_db, connect_timeout=5)
             conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
         except ImportError:
             import psycopg as pg
-            conn = pg.connect(f'host={host} port={port} user={user} password={password} dbname={dbname} connect_timeout=5', autocommit=True)
+            conn = pg.connect(f'host={host} port={port} user={user} password={password} dbname={default_db} connect_timeout=5', autocommit=True)
         break
     except Exception as e:
         time.sleep(1)
@@ -86,13 +86,30 @@ else:
             print('USER=odoo;')
             print('echo \"Dedicated PostgreSQL role odoo provisioned successfully.\";')
 
-        # Check if target database contains initialized Odoo tables
-        if dbname and dbname != 'postgres':
-            cur.execute(\"SELECT 1 FROM information_schema.tables WHERE table_name = 'ir_module_module'\")
-            if cur.fetchone():
-                print('DB_IS_INITIALIZED=1;')
+        # Find all databases and clear any broken asset bundle caches
+        cur.execute(\"SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres')\")
+        dbs = [row[0] for row in cur.fetchall()]
         cur.close()
         conn.close()
+
+        # Connect to each user database and purge stale /web/assets attachments
+        for db in dbs:
+            try:
+                try:
+                    import psycopg2 as pg
+                    dconn = pg.connect(host=host, port=port, user='odoo' if user == 'postgres' else user, password=password, dbname=db, connect_timeout=5)
+                    dconn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+                except ImportError:
+                    import psycopg as pg
+                    dconn = pg.connect(f'host={host} port={port} user={\"odoo\" if user == \"postgres\" else user} password={password} dbname={db} connect_timeout=5', autocommit=True)
+                dcur = dconn.cursor()
+                dcur.execute(\"SELECT 1 FROM information_schema.tables WHERE table_name = 'ir_module_module'\")
+                if dcur.fetchone():
+                    dcur.execute(\"DELETE FROM ir_attachment WHERE url LIKE '/web/assets/%'\")
+                dcur.close()
+                dconn.close()
+            except Exception:
+                pass
     except Exception as exc:
         print(f'echo \"PostgreSQL init notice: {exc}\";', file=sys.stderr)
 " 2>/dev/null || true)
@@ -115,24 +132,13 @@ list_db = True
 proxy_mode = True
 EOF
 
-# Only enforce db_name if the database is already initialized with Odoo schema.
-# If it is empty/uninitialized, omitting db_name allows Odoo to display the web
-# database creation/manager wizard instead of crashing with 'relation ir_module_module does not exist'.
-if [ "$DB_IS_INITIALIZED" -eq 1 ] && [ -n "${DATABASE}" ]; then
-    echo "db_name = ${DATABASE}" >> "$CONFIG_FILE"
-fi
-
 echo "=================================================="
 echo " Starting TalentHub Odoo 19"
 echo " HTTP Port:      ${HTTP_PORT}"
 echo " Database Host:  ${HOST}:${PORT_NUM}"
 echo " Database User:  ${USER}"
-if [ "$DB_IS_INITIALIZED" -eq 1 ]; then
-    echo " Database Name:  ${DATABASE} (initialized)"
-else
-    echo " Database Name:  (web selector / manager enabled)"
-fi
 echo " Addons Path:    ${ADDONS_PATH}"
+echo " Proxy Mode:     True"
 echo "=================================================="
 
 # Execute Odoo with our generated configuration
