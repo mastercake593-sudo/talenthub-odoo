@@ -2,8 +2,8 @@ FROM odoo:19.0
 
 USER root
 
-# Ensure requests library is installed for HTTP API integrations
-RUN pip3 install --no-cache-dir requests --break-system-packages 2>/dev/null || true
+# Ensure requests and psycopg2 libraries are available
+RUN pip3 install --no-cache-dir requests psycopg2-binary --break-system-packages 2>/dev/null || true
 
 # Copy custom addon into Odoo extra-addons directory
 COPY addons/talenthub_integration /mnt/extra-addons/talenthub_integration
