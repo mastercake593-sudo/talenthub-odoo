@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_talenthub_position_user,talenthub.position.user,model_talenthub_position,base.group_user,1,1,1,1
+access_talenthub_attribute_result_user,talenthub.attribute.result.user,model_talenthub_attribute_result,base.group_user,1,1,1,1
+access_talenthub_attribute_popular_value_user,talenthub.attribute.popular.value.user,model_talenthub_attribute_popular_value,base.group_user,1,1,1,1
+access_talenthub_import_position_wizard_user,talenthub.import.position.wizard.user,model_talenthub_import_position_wizard,base.group_user,1,1,1,1

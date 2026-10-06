@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Top-level Root Menu -->
+    <menuitem id="menu_talenthub_root"
+              name="TalentHub"
+              sequence="15"/>
+
+    <!-- Child Menu: Positions -->
+    <menuitem id="menu_talenthub_positions"
+              name="Positions"
+              parent="menu_talenthub_root"
+              action="action_talenthub_position"
+              sequence="10"/>
+
+    <!-- Child Menu: Import from TalentHub -->
+    <menuitem id="menu_talenthub_import_wizard"
+              name="Import from TalentHub"
+              parent="menu_talenthub_root"
+              action="action_talenthub_import_position_wizard"
+              sequence="20"/>
+</odoo>

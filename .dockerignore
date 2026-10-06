@@ -1,0 +1,10 @@
+.git
+.gitignore
+.gitattributes
+__pycache__/
+*.py[cod]
+*$py.class
+.vscode/
+.idea/
+*.log
+.env

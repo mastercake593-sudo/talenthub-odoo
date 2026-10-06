@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- TalentHub Import Position Wizard Form View -->
+    <record id="view_talenthub_import_position_wizard_form" model="ir.ui.view">
+        <field name="name">talenthub.import.position.wizard.form</field>
+        <field name="model">talenthub.import.position.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Import Position from TalentHub">
+                <p class="text-muted">
+                    Enter your TalentHub base URL and the per-Position API token.
+                    Odoo will connect to TalentHub and retrieve aggregate attribute statistics.
+                    The API token is never stored.
+                </p>
+                <group>
+                    <field name="base_url" placeholder="e.g. https://talenthub-api.example.com"/>
+                    <field name="api_token" password="True" placeholder="Enter Position API Token"/>
+                </group>
+                <footer>
+                    <button name="action_import_position" string="Import" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- TalentHub Import Position Wizard Action Window -->
+    <record id="action_talenthub_import_position_wizard" model="ir.actions.act_window">
+        <field name="name">Import from TalentHub</field>
+        <field name="res_model">talenthub.import.position.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_talenthub_import_position_wizard_form"/>
+    </record>
+</odoo>

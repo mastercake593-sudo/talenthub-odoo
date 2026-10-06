@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- TalentHub Position Search View -->
+    <record id="view_talenthub_position_search" model="ir.ui.view">
+        <field name="name">talenthub.position.search</field>
+        <field name="model">talenthub.position</field>
+        <field name="arch" type="xml">
+            <search string="Search Positions">
+                <field name="name" string="Position"/>
+                <field name="external_position_id" string="External ID"/>
+                <field name="source_base_url" string="Source URL"/>
+                <group expand="0" string="Group By">
+                    <filter string="Source URL" name="group_by_source" domain="[]" context="{'group_by': 'source_base_url'}"/>
+                    <filter string="Import Date" name="group_by_date" domain="[]" context="{'group_by': 'imported_at:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- TalentHub Position List View -->
+    <record id="view_talenthub_position_list" model="ir.ui.view">
+        <field name="name">talenthub.position.list</field>
+        <field name="model">talenthub.position</field>
+        <field name="arch" type="xml">
+            <list string="Positions" create="false" edit="false">
+                <field name="name" string="Position"/>
+                <field name="external_position_id" string="External Position ID"/>
+                <field name="source_base_url" string="Source URL" widget="url"/>
+                <field name="imported_at" string="Imported At"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- TalentHub Position Form View -->
+    <record id="view_talenthub_position_form" model="ir.ui.view">
+        <field name="name">talenthub.position.form</field>
+        <field name="model">talenthub.position</field>
+        <field name="arch" type="xml">
+            <form string="Position" create="false" edit="false">
+                <header>
+                    <button name="action_reimport" string="Re-import from TalentHub" type="object" class="btn-primary" icon="fa-refresh"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Position Title"/>
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Source Information">
+                            <field name="external_position_id" readonly="1"/>
+                            <field name="source_base_url" readonly="1" widget="url"/>
+                            <field name="imported_at" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Aggregated Attributes" name="attributes">
+                            <field name="attribute_result_ids" readonly="1">
+                                <list create="false" delete="false" edit="false">
+                                    <field name="name" string="Attribute"/>
+                                    <field name="data_type" string="Type"/>
+                                    <field name="sample_count" string="Count"/>
+                                    <field name="average_value" string="Average"/>
+                                    <field name="min_value" string="Min"/>
+                                    <field name="max_value" string="Max"/>
+                                    <field name="true_count" string="True Count"/>
+                                    <field name="false_count" string="False Count"/>
+                                    <field name="popular_values_display" string="Popular Values"/>
+                                </list>
+                                <form string="Attribute Aggregate Detail">
+                                    <sheet>
+                                        <group>
+                                            <group string="General Info">
+                                                <field name="name" readonly="1"/>
+                                                <field name="external_attribute_id" readonly="1"/>
+                                                <field name="data_type" readonly="1"/>
+                                                <field name="sample_count" readonly="1"/>
+                                            </group>
+                                            <group string="Numeric Metrics">
+                                                <field name="average_value" readonly="1"/>
+                                                <field name="min_value" readonly="1"/>
+                                                <field name="max_value" readonly="1"/>
+                                            </group>
+                                            <group string="Boolean Counts">
+                                                <field name="true_count" readonly="1"/>
+                                                <field name="false_count" readonly="1"/>
+                                            </group>
+                                        </group>
+                                        <notebook>
+                                            <page string="Popular Values (OneOfMany)" name="popular_values">
+                                                <field name="popular_value_ids" readonly="1">
+                                                    <list create="false" delete="false" edit="false">
+                                                        <field name="value" string="Value"/>
+                                                        <field name="count" string="Count"/>
+                                                    </list>
+                                                </field>
+                                            </page>
+                                        </notebook>
+                                    </sheet>
+                                </form>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- TalentHub Position Action Window -->
+    <record id="action_talenthub_position" model="ir.actions.act_window">
+        <field name="name">Positions</field>
+        <field name="res_model">talenthub.position</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_talenthub_position_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No positions imported yet!
+            </p>
+            <p>
+                Click "Import from TalentHub" to fetch aggregated statistics for a position.
+            </p>
+        </field>
+    </record>
+</odoo>
