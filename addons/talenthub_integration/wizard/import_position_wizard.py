@@ -36,24 +36,40 @@ class TalentHubImportPositionWizard(models.TransientModel):
         if not api_token:
             raise UserError(_("Please provide a Position API Token."))
 
-        endpoint = f"{base_url}/api/integrations/odoo/position"
         masked_token = f"{api_token[:4]}***" if len(api_token) > 4 else "***"
-        _logger.info("Importing TalentHub position from %s with token prefix %s", endpoint, masked_token)
+        _logger.info("Importing TalentHub position from %s with token prefix %s", base_url, masked_token)
 
+        # Send both X-API-Token and Authorization headers for maximum compatibility
         headers = {
+            'X-API-Token': api_token,
             'Authorization': f'Bearer {api_token}',
             'Accept': 'application/json',
             'User-Agent': 'Odoo-TalentHub-Integration/19.0',
         }
 
-        try:
-            response = requests.get(endpoint, headers=headers, timeout=TIMEOUT_SECONDS)
-        except requests.exceptions.Timeout:
-            _logger.error("Timeout connecting to TalentHub at %s", endpoint)
-            raise UserError(_("Connection timed out while reaching TalentHub at %s.") % base_url)
-        except requests.exceptions.RequestException as exc:
-            _logger.error("Network error reaching TalentHub at %s: %s", endpoint, str(exc))
-            raise UserError(_("Network failure communicating with TalentHub: %s") % str(exc))
+        # Candidate endpoints: try /position-results first, fallback to /position
+        endpoints = [
+            f"{base_url}/api/integrations/odoo/position-results",
+            f"{base_url}/api/integrations/odoo/position",
+        ]
+
+        response = None
+        last_error = None
+        for endpoint in endpoints:
+            try:
+                resp = requests.get(endpoint, headers=headers, timeout=TIMEOUT_SECONDS)
+                if resp.status_code == 404 and endpoint != endpoints[-1]:
+                    # Try next candidate endpoint
+                    continue
+                response = resp
+                break
+            except requests.exceptions.Timeout:
+                last_error = _("Connection timed out while reaching TalentHub at %s.") % base_url
+            except requests.exceptions.RequestException as exc:
+                last_error = _("Network failure communicating with TalentHub: %s") % str(exc)
+
+        if response is None:
+            raise UserError(last_error or _("Failed to reach TalentHub API."))
 
         # Handle HTTP status codes according to requirements
         if response.status_code in (401, 403):
@@ -69,23 +85,27 @@ class TalentHubImportPositionWizard(models.TransientModel):
         try:
             data = response.json()
         except Exception:
-            _logger.error("Invalid JSON response received from %s", endpoint)
+            _logger.error("Invalid JSON response received from TalentHub")
             raise UserError(_("Invalid JSON response received from TalentHub. Please ensure the endpoint returns valid JSON."))
 
         if not isinstance(data, dict):
             raise UserError(_("Invalid response structure: expected a JSON object."))
 
+        # Support both wrapped { "position": { ... } } and direct { "id": ..., "title": ... } formats
         position_data = data.get('position')
         if not isinstance(position_data, dict):
-            raise UserError(_("Invalid response structure: missing or malformed 'position' object."))
+            if 'id' in data and ('title' in data or 'name' in data):
+                position_data = data
+            else:
+                raise UserError(_("Invalid response structure: missing or malformed 'position' object."))
 
-        ext_id = str(position_data.get('id') or '').strip()
-        title = (position_data.get('title') or '').strip()
+        ext_id = str(position_data.get('id') or position_data.get('positionId') or '').strip()
+        title = (position_data.get('title') or position_data.get('name') or position_data.get('positionTitle') or '').strip()
 
         if not ext_id or not title:
-            raise UserError(_("Invalid position data: 'id' and 'title' are required in 'position'."))
+            raise UserError(_("Invalid position data: 'id' and 'title' are required in position response."))
 
-        attributes_data = data.get('attributes') or []
+        attributes_data = data.get('attributes') or data.get('attributeResults') or []
         if not isinstance(attributes_data, list):
             attributes_data = []
 
@@ -116,38 +136,45 @@ class TalentHubImportPositionWizard(models.TransientModel):
             if not isinstance(attr, dict):
                 continue
 
-            attr_name = (attr.get('name') or 'Unnamed Attribute').strip()
-            attr_type = (attr.get('type') or 'Unknown').strip()
-            attr_id = str(attr.get('id') or '').strip()
-            agg = attr.get('aggregation') or {}
+            attr_name = (attr.get('name') or attr.get('title') or 'Unnamed Attribute').strip()
+            attr_type = (attr.get('type') or attr.get('dataType') or 'Unknown').strip()
+            attr_id = str(attr.get('id') or attr.get('attributeId') or '').strip()
+            agg = attr.get('aggregation') or attr.get('aggregate') or attr.get('aggregatedResult') or {}
             if not isinstance(agg, dict):
                 agg = {}
 
             # Parse safe counts and metrics
-            sample_count = self._safe_int(agg.get('count'))
+            sample_count = self._safe_int(agg.get('count') or agg.get('sampleCount'))
 
             # Numeric metrics
-            avg_val = self._safe_float(agg.get('average'))
-            min_val = self._safe_float(agg.get('minimum'))
-            max_val = self._safe_float(agg.get('maximum'))
+            avg_val = self._safe_float(agg.get('average') if agg.get('average') is not None else agg.get('averageValue'))
+            min_val = self._safe_float(agg.get('minimum') if agg.get('minimum') is not None else agg.get('minValue'))
+            max_val = self._safe_float(agg.get('maximum') if agg.get('maximum') is not None else agg.get('maxValue'))
 
             # Boolean metrics
             true_count = self._safe_int(agg.get('trueCount'))
             false_count = self._safe_int(agg.get('falseCount'))
 
-            # Popular values (OneOfMany)
+            # Popular values (OneOfMany / Dropdown / String)
             popular_vals_commands = []
-            popular_list = agg.get('popularValues')
+            popular_list = agg.get('popularValues') or agg.get('distribution') or agg.get('popular_values')
             if isinstance(popular_list, list):
                 for item in popular_list:
                     if isinstance(item, dict):
-                        val_str = str(item.get('value', '')).strip()
+                        val_str = str(item.get('value') or item.get('key') or '').strip()
                         if val_str:
                             val_cnt = self._safe_int(item.get('count'))
                             popular_vals_commands.append((0, 0, {
                                 'value': val_str,
                                 'count': val_cnt,
                             }))
+            elif isinstance(popular_list, dict):
+                # In case backend returns { "B2": 2, "C1": 1 }
+                for val_str, val_cnt in popular_list.items():
+                    popular_vals_commands.append((0, 0, {
+                        'value': str(val_str),
+                        'count': self._safe_int(val_cnt),
+                    }))
 
             attr_dict = {
                 'position_id': position.id,
