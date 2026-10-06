@@ -86,13 +86,13 @@ else:
             print('USER=odoo;')
             print('echo \"Dedicated PostgreSQL role odoo provisioned successfully.\";')
 
-        # Find all databases and clear any broken asset bundle caches
+        # Find all databases and clear any broken asset bundle caches + auto-migrate talenthub schema
         cur.execute(\"SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres')\")
         dbs = [row[0] for row in cur.fetchall()]
         cur.close()
         conn.close()
 
-        # Connect to each user database and purge stale /web/assets attachments
+        # Connect to each user database
         for db in dbs:
             try:
                 try:
@@ -106,6 +106,20 @@ else:
                 dcur.execute(\"SELECT 1 FROM information_schema.tables WHERE table_name = 'ir_module_module'\")
                 if dcur.fetchone():
                     dcur.execute(\"DELETE FROM ir_attachment WHERE url LIKE '/web/assets/%'\")
+
+                    # Ensure new schema columns exist in PostgreSQL so imports never fail with UndefinedColumn
+                    dcur.execute(\"\"\"
+                        ALTER TABLE IF EXISTS talenthub_position 
+                            ADD COLUMN IF NOT EXISTS cv_count integer DEFAULT 0,
+                            ADD COLUMN IF NOT EXISTS generated_at timestamp without time zone;
+
+                        ALTER TABLE IF EXISTS talenthub_attribute_result 
+                            ADD COLUMN IF NOT EXISTS aggregation_kind varchar,
+                            ADD COLUMN IF NOT EXISTS true_percentage double precision,
+                            ADD COLUMN IF NOT EXISTS date_min varchar,
+                            ADD COLUMN IF NOT EXISTS date_max varchar,
+                            ADD COLUMN IF NOT EXISTS summary_info varchar;
+                    \"\"\")
                 dcur.close()
                 dconn.close()
             except Exception:
