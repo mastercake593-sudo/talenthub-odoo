@@ -38,6 +38,9 @@ ADMIN_PWD="${ODOO_ADMIN_PASSWORD:-${ADMIN_PASSWORD:-admin}}"
 # Addons paths: include official addons and custom extra-addons
 ADDONS_PATH="/usr/lib/python3/dist-packages/odoo/addons,/mnt/extra-addons"
 
+# Ensure local data directory structure exists
+mkdir -p /var/lib/odoo/filestore /var/lib/odoo/sessions 2>/dev/null || true
+
 # Odoo deliberately aborts with an error if db_user is 'postgres':
 # "Using the database user 'postgres' is a security risk, aborting."
 # If connecting as 'postgres', automatically provision a dedicated 'odoo' role in PostgreSQL.
@@ -109,6 +112,7 @@ db_port = ${PORT_NUM}
 db_user = ${USER}
 db_password = ${PASSWORD}
 list_db = True
+proxy_mode = True
 EOF
 
 # Only enforce db_name if the database is already initialized with Odoo schema.
